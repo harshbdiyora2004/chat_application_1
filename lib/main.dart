@@ -3,10 +3,25 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'screens/registration_screen.dart';
 import 'screens/home_screen.dart';
+import 'services/connectivity_service.dart';
+import 'services/chat_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp();
+
+  // Initialize connectivity service
+  final connectivityService = ConnectivityService();
+  await connectivityService.initialize();
+
+  // Listen for connection changes and sync messages
+  connectivityService.connectionStream.listen((isConnected) {
+    if (isConnected) {
+      // Sync offline messages when connection is restored
+      ChatService().syncOfflineMessages();
+    }
+  });
+
   runApp(const MyApp());
 }
 

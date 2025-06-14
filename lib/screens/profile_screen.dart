@@ -122,7 +122,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         bio: _bioController.text.trim(),
-        profilePictureUrl: base64Image,
+        profilePictureBase64: base64Image,
       );
       await _firebaseService.storeUserData(user, _uid!);
       if (base64Image != null) {

@@ -39,6 +39,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
   String? _pendingImageBase64;
   String? _pendingImageCaption;
   StreamSubscription<QuerySnapshot>? _messageSubscription;
+  StreamSubscription<DocumentSnapshot>? _receiverProfilePicSubscription;
   List<DocumentSnapshot> _messages = [];
   bool _isLoading = true;
   bool _hasMoreMessages = true;
@@ -47,10 +48,12 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
   bool _isLoadingMore = false;
   static const int _maxLoadedMessages = 100;
   DateTime? _oldestLoadedMessageDate;
+  String? _currentReceiverProfilePic;
 
   @override
   void initState() {
     super.initState();
+    _currentReceiverProfilePic = widget.receiverProfilePic;
     _initUidAndChatId();
     _inputFocusNode.addListener(() {
       if (_inputFocusNode.hasFocus) {
@@ -186,6 +189,22 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
     );
   }
 
+  void _setupReceiverProfilePicListener() {
+    _receiverProfilePicSubscription?.cancel();
+    _receiverProfilePicSubscription = FirebaseFirestore.instance
+        .collection('users')
+        .doc(widget.receiverUid)
+        .snapshots()
+        .listen((snapshot) {
+      if (mounted && snapshot.exists) {
+        final data = snapshot.data();
+        setState(() {
+          _currentReceiverProfilePic = data?['profilePictureBase64'] as String?;
+        });
+      }
+    });
+  }
+
   void _updateMessageStatuses() {
     for (final doc in _messages) {
       _updateMessageStatus(doc);
@@ -195,6 +214,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
   @override
   void dispose() {
     _messageSubscription?.cancel();
+    _receiverProfilePicSubscription?.cancel();
     _inputFocusNode.dispose();
     _resetUnreadCount();
     _messageController.dispose();
@@ -242,8 +262,9 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
 
       // Reset unread count when opening chat
       await _resetUnreadCount();
-      // Only now, after _chatId is set, set up the message listener
+      // Only now, after _chatId is set, set up the message listener and receiver profile pic listener
       _setupMessageListener();
+      _setupReceiverProfilePicListener();
     } catch (e) {
       log('Error initializing chat: $e');
       if (mounted) {
@@ -314,7 +335,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
       final myName =
           ((userData['firstName'] ?? '') + ' ' + (userData['lastName'] ?? ''))
               .trim();
-      final myProfilePic = userData['profilePictureBase64'] ?? '';
+      final myProfilePic = userData['profilePictureBase64'] as String? ?? '';
 
       // Optimize by using a single batch write
       final batch = FirebaseFirestore.instance.batch();
@@ -349,7 +370,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
             'participant': {
               'uid': widget.receiverUid,
               'name': widget.receiverName,
-              'profilePic': widget.receiverProfilePic ?? '',
+              'profilePic': _currentReceiverProfilePic ?? '',
             },
             'unreadCount': 0,
           },
@@ -484,7 +505,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
       final myName =
           ((userData['firstName'] ?? '') + ' ' + (userData['lastName'] ?? ''))
               .trim();
-      final myProfilePic = userData['profilePictureBase64'] ?? '';
+      final myProfilePic = userData['profilePictureBase64'] as String? ?? '';
       // Update chat metadata for both users
       final myChatRef = FirebaseFirestore.instance
           .collection('users')
@@ -511,7 +532,7 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
           'participant': {
             'uid': widget.receiverUid,
             'name': widget.receiverName,
-            'profilePic': widget.receiverProfilePic ?? '',
+            'profilePic': _currentReceiverProfilePic ?? '',
           },
           'unreadCount': 0,
         });
@@ -977,10 +998,11 @@ class _IndividualChatScreenState extends State<IndividualChatScreen> {
           elevation: 0,
           title: Row(
             children: [
-              widget.receiverProfilePic != null
+              _currentReceiverProfilePic != null &&
+                      _currentReceiverProfilePic!.isNotEmpty
                   ? CircleAvatar(
                       backgroundImage: MemoryImage(
-                        base64Decode(widget.receiverProfilePic!),
+                        base64Decode(_currentReceiverProfilePic!),
                       ),
                       radius: 22,
                     )

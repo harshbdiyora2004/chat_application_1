@@ -105,7 +105,15 @@ class _ChatsScreenState extends State<ChatsScreen> {
     const Color textColor = Colors.black87;
     const Color dividerColor = Color(0xFFE0E0E0);
 
-    if (_isLoading || _currentUid == null) {
+    if (_currentUid == null) {
+      // Try to reload UID after a short delay
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _loadUid();
+      });
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_isLoading) {
       return const Center(child: CircularProgressIndicator());
     }
 

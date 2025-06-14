@@ -94,8 +94,14 @@ class _ContactsScreenState extends State<ContactsScreen> {
             final phoneNumber = userData['phoneNumber'] as String?;
             if (phoneNumber != null) {
               final normalizedNumber = _normalizePhone(phoneNumber);
+              // Ensure UID and profilePictureBase64 are present in userData
+              _userDataCache[normalizedNumber] = {
+                ...userData,
+                'uid': doc.id,
+                'profilePictureBase64':
+                    (userData['profilePictureBase64'] as String?) ?? '',
+              };
               _registeredNumbers.add(normalizedNumber);
-              _userDataCache[normalizedNumber] = userData;
             }
           }
 
@@ -284,6 +290,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                     icon: const Icon(Icons.message),
                                     onPressed: () {
                                       if (userData != null &&
+                                          userData['uid'] != null &&
                                           userData['uid'] !=
                                               _currentUserPhone) {
                                         Navigator.push(
@@ -293,13 +300,22 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                                 IndividualChatScreen(
                                               receiverUid: userData['uid'],
                                               receiverName:
-                                                  userData['firstName'] +
+                                                  (userData['firstName'] ??
+                                                          '') +
                                                       ' ' +
-                                                      userData['lastName'],
+                                                      (userData['lastName'] ??
+                                                          ''),
                                               receiverProfilePic: userData[
                                                   'profilePictureBase64'],
                                             ),
                                           ),
+                                        );
+                                      } else {
+                                        ScaffoldMessenger.of(context)
+                                            .showSnackBar(
+                                          const SnackBar(
+                                              content: Text(
+                                                  'User data is incomplete.')),
                                         );
                                       }
                                     },
@@ -313,6 +329,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                   ),
                             onTap: isRegistered &&
                                     userData != null &&
+                                    userData['uid'] != null &&
                                     userData['uid'] != _currentUserPhone
                                 ? () {
                                     Navigator.push(
@@ -321,9 +338,10 @@ class _ContactsScreenState extends State<ContactsScreen> {
                                         builder: (context) =>
                                             IndividualChatScreen(
                                           receiverUid: userData['uid'],
-                                          receiverName: userData['firstName'] +
-                                              ' ' +
-                                              userData['lastName'],
+                                          receiverName:
+                                              (userData['firstName'] ?? '') +
+                                                  ' ' +
+                                                  (userData['lastName'] ?? ''),
                                           receiverProfilePic:
                                               userData['profilePictureBase64'],
                                         ),

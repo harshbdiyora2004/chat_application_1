@@ -3,14 +3,14 @@ class UserModel {
   final String firstName;
   final String lastName;
   final String bio;
-  final String? profilePictureUrl;
+  final String? profilePictureBase64;
 
   UserModel({
     required this.phoneNumber,
     required this.firstName,
     required this.lastName,
     required this.bio,
-    this.profilePictureUrl,
+    this.profilePictureBase64,
   });
 
   Map<String, dynamic> toMap() {
@@ -19,7 +19,7 @@ class UserModel {
       'firstName': firstName,
       'lastName': lastName,
       'bio': bio,
-      'profilePictureUrl': profilePictureUrl,
+      'profilePictureBase64': profilePictureBase64,
     };
   }
 
@@ -29,7 +29,7 @@ class UserModel {
       firstName: map['firstName'] ?? '',
       lastName: map['lastName'] ?? '',
       bio: map['bio'] ?? '',
-      profilePictureUrl: map['profilePictureUrl'],
+      profilePictureBase64: map['profilePictureBase64'],
     );
   }
 }

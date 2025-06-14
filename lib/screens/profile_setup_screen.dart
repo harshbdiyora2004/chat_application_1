@@ -109,7 +109,7 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
         firstName: _firstNameController.text.trim(),
         lastName: _lastNameController.text.trim(),
         bio: _bioController.text.trim(),
-        profilePictureUrl: base64Image,
+        profilePictureBase64: base64Image,
       );
 
       // Store user data
@@ -145,35 +145,30 @@ class _ProfileSetupScreenState extends State<ProfileSetupScreen> {
       // Generate OTP first
       final otp = _firebaseService.generateOTP();
 
-      // Navigate to OTP screen
+      // Convert image to base64 if exists
+      String? base64Image;
+      if (_imageFile != null) {
+        final bytes = await _imageFile!.readAsBytes();
+        base64Image = base64Encode(bytes);
+      }
+
+      // Navigate to OTP screen, passing all profile fields
       if (!mounted) return;
 
-      final result = await Navigator.push(
+      await Navigator.push(
         context,
         MaterialPageRoute(
           builder: (context) => OTPScreen(
             phoneNumber: widget.phoneNumber,
             otp: otp,
             isRegistration: true,
+            firstName: _firstNameController.text.trim(),
+            lastName: _lastNameController.text.trim(),
+            bio: _bioController.text.trim(),
+            profilePictureBase64: base64Image,
           ),
         ),
       );
-
-      // If OTP verification was successful
-      if (result == true) {
-        // Generate unique ID for the user
-        final uid = _firebaseService.generateUniqueId();
-
-        // Convert image to base64 if exists
-        String? base64Image;
-        if (_imageFile != null) {
-          final bytes = await _imageFile!.readAsBytes();
-          base64Image = base64Encode(bytes);
-        }
-
-        // Store user data and navigate to home screen
-        await _storeUserData(uid, base64Image);
-      }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(

@@ -6,17 +6,27 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'home_screen.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../models/user_model.dart';
+import '../services/firebase_service.dart';
 
 class OTPScreen extends StatefulWidget {
   final String phoneNumber;
   final String otp;
   final bool isRegistration;
+  final String? firstName;
+  final String? lastName;
+  final String? bio;
+  final String? profilePictureBase64;
 
   const OTPScreen({
     super.key,
     required this.phoneNumber,
     required this.otp,
     required this.isRegistration,
+    this.firstName,
+    this.lastName,
+    this.bio,
+    this.profilePictureBase64,
   });
 
   @override
@@ -30,6 +40,7 @@ class _OTPScreenState extends State<OTPScreen>
   bool _isLoading = false;
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late FirebaseService _firebaseService;
 
   // Custom colors
   final Color _primaryColor = const Color(0xFF1A237E); // Deep Blue
@@ -43,15 +54,14 @@ class _OTPScreenState extends State<OTPScreen>
     super.initState();
     _animationController = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1500),
+      duration: const Duration(milliseconds: 500),
     );
-    _fadeAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(
-        parent: _animationController,
-        curve: Curves.easeIn,
-      ),
+    _fadeAnimation = CurvedAnimation(
+      parent: _animationController,
+      curve: Curves.easeIn,
     );
     _animationController.forward();
+    _firebaseService = FirebaseService();
   }
 
   @override
@@ -73,30 +83,44 @@ class _OTPScreenState extends State<OTPScreen>
         await prefs.setBool('isLoggedIn', true);
         await prefs.setString('phoneNumber', widget.phoneNumber);
 
-        // Fetch UID from Firestore and store in SharedPreferences
-        final query = await FirebaseFirestore.instance
-            .collection('users')
-            .where('phoneNumber', isEqualTo: widget.phoneNumber)
-            .get();
-        if (query.docs.isNotEmpty) {
-          final uid = query.docs.first['uid'];
+        if (widget.isRegistration) {
+          // Create a new user document in Firestore
+          final user = UserModel(
+            phoneNumber: widget.phoneNumber,
+            firstName: widget.firstName!,
+            lastName: widget.lastName!,
+            bio: widget.bio!,
+            profilePictureBase64: widget.profilePictureBase64,
+          );
+
+          // Store user data in Firestore
+          final uid = await _firebaseService.generateUniqueId();
+          await _firebaseService.storeUserData(user, uid);
+
+          // Store the UID in SharedPreferences
           await prefs.setString('uid', uid);
-          log('DEBUG: Saved UID to SharedPreferences: $uid');
+          log('DEBUG: Created new user with UID: $uid');
+        } else {
+          // For login, fetch existing UID
+          final query = await FirebaseFirestore.instance
+              .collection('users')
+              .where('phoneNumber', isEqualTo: widget.phoneNumber)
+              .get();
+          if (query.docs.isNotEmpty) {
+            final uid = query.docs.first.id;
+            await prefs.setString('uid', uid);
+            log('DEBUG: Retrieved existing UID: $uid');
+          }
         }
 
         if (!mounted) return;
 
-        if (widget.isRegistration) {
-          // For registration, return true to ProfileSetupScreen
-          Navigator.pop(context, true);
-        } else {
-          // For login, navigate to home screen
-          Navigator.pushAndRemoveUntil(
-            context,
-            MaterialPageRoute(builder: (context) => const HomeScreen()),
-            (route) => false,
-          );
-        }
+        // Navigate to home screen
+        Navigator.pushAndRemoveUntil(
+          context,
+          MaterialPageRoute(builder: (context) => const HomeScreen()),
+          (route) => false,
+        );
       } else {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Invalid OTP')),
